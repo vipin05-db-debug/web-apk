@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK Downloader</title>
+    <style>
+        /* Basic resets */
+        body, h1, div, img, a, span, button {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Stronger background setup */
+        body {
+            background-color: #eef2f3;
+            color: #333;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Brighter background "stickers" */
+        .bg-shape {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(50px);
+            z-index: -1;
+        }
+
+        .shape-1 {
+            top: -20px;
+            left: -30px;
+            width: 280px;
+            height: 280px;
+            background-color: rgba(46, 204, 113, 0.6); 
+        }
+
+        .shape-2 {
+            bottom: 50px;
+            right: -40px;
+            width: 250px;
+            height: 250px;
+            background-color: rgba(52, 152, 219, 0.5); 
+        }
+
+        .shape-3 {
+            top: 30%;
+            left: 30%;
+            width: 220px;
+            height: 220px;
+            background-color: rgba(156, 89, 182, 0.460); 
+        }
+
+        .shape-4 {
+            bottom: 20%;
+            left: 10%;
+            width: 180px;
+            height: 180px;
+            background-color: rgba(241, 196, 15, 0.4); 
+        }
+
+
+
+        /* Tighter content wrapper */
+        .content {
+            width: 100%;
+            max-width: 500px;
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1; /* Keep content above background shapes */
+        }
+
+        h1 {
+            margin-bottom: 25px;
+            font-size: 2.2em; 
+            font-weight: 800;
+            text-align: center;
+            color: #222;
+            text-shadow: 0 2px 10px rgba(255,255,255,0.9);
+            letter-spacing: -0.5px;
+        }
+
+        .app-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px; 
+        }
+
+        /* Tighter, highly transparent glass container */
+        .app-item {
+            display: flex;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.4); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 12px 16px; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        /* Smaller rounded icon */
+        .app-icon {
+            width: 46px; 
+            height: 46px; 
+            border-radius: 50%;
+            background-color: #ddd; 
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .app-details {
+            flex-grow: 1;
+            margin: 0 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .app-name {
+            font-weight: 700;
+            font-size: 1.05em; 
+            color: #111;
+        }
+
+        .app-category {
+            font-size: 0.75em; 
+            color: #555;
+            margin-top: 2px;
+        }
+
+        /* =========================================
+           IN-PLACE DOWNLOAD BUTTON & ANIMATION
+           ========================================= */
+        .download-btn {
+            position: relative;
+            background: transparent;
+            border: none;
+            width: 40px; /* Fixed width to prevent layout jumping */
+            height: 40px; /* Fixed height to prevent layout jumping */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        /* The Arrow inside the button */
+        .btn-arrow {
+            color: #2ecc71;
+            font-size: 1.8em; 
+            font-weight: 900;
+            text-shadow: 0 0 18px rgba(46, 204, 113, 0.9), 0 0 8px rgba(46, 204, 113, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:active .btn-arrow {
+            transform: scale(0.85);
+        }
+
+        .btn-text {
+            font-size: 0.9em;
+            color: #999;
+            font-weight: 600;
+        }
+
+        /* Smooth Waving Circle Loader (Hidden by default) */
+        .btn-loader {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #2ecc71;
+            border-bottom-color: #3498db;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Waving/Pulsing inner circle */
+        .btn-loader::before {
+            content: '';
+            position: absolute;
+            top: -3px; left: -3px; right: -3px; bottom: -3px;
+            border-radius: 50%;
+            border: 3px solid rgba(46, 204, 113, 0.3);
+            animation: pulseWave 1.5s ease-out infinite;
+        }
+
+        /* Spin Animation */
+        @keyframes spinSmooth {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Waving Pulse Animation */
+        @keyframes pulseWave {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* --- ACTIVE LOADING STATE --- */
+        .download-btn.is-loading .btn-arrow {
+            opacity: 0; /* Hide arrow */
+            transform: scale(0.5);
+        }
+
+        .download-btn.is-loading .btn-loader {
+            opacity: 1; /* Show loader */
+            visibility: visible;
+            animation: spinSmooth 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        /* =========================================
+           "DOWNLOADED" TOAST NOTIFICATION
+           ========================================= */
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px); /* Hidden off-screen down */
+            background: linear-gradient(135deg, #2ecc71, #3498db); /* Theme gradient */
+            color: white;
+            font-weight: 700;
+            font-size: 1em;
+            padding: 14px 32px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(46, 204, 113, 0.4);
+            opacity: 0;
+            z-index: 1000;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Bouncy slide up */
+            pointer-events: none; /* Can't click it */
+        }
+
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0); /* Slide into view */
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Background decorative shapes -->
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-3"></div>
+    <div class="bg-shape shape-4"></div>
+
+    <!-- The Toast Notification (Hidden by default) -->
+    <div class="toast-notification" id="toastMsg">Downloaded ✓</div>
+
+    <div class="content">
+        <h1>APK Downloader</h1>
+
+        <div class="app-list">
+            
+            <!-- APP 1: Studio -->
+            <div class="app-item">
+                <div class="app-icon"><img src="studio.png" alt="Studio Icon"></div>
+                <div class="app-details">
+                    <div class="app-name">Studio</div>
+                    <div class="app-category">drawing & animation</div>
+                </div>
+                <!-- Updated Button HTML -->
+                <button class="download-btn" data-link="studio.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+
+            <!-- APP 2: Premium Calculator -->
+            <div class="app-item">
+                <div class="app-icon"><img src="calculator.png" alt="Calculator Icon"></div>
+                <div class="app-details">
+                    <div class="app-name">Premium Calculator</div>
+                    <div class="app-category">calculation & converter</div>
+                </div>
+                <button class="download-btn" data-link="Calculator.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+
+            <!-- APP 3: Mario -->
+            <div class="app-item">
+                <div class="app-icon"><img src="mario.png" alt="Mario Icon"></div>
+                <div class="app-details">
+                    <div class="app-name">Mario</div>
+                    <div class="app-category">Super Mario game</div>
+                </div>
+                <button class="download-btn" data-link="mario.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+
+            <!-- APP 4: XO -->
+            <div class="app-item">
+                <div class="app-icon"><img src="xo.png" alt="XO Icon"></div>
+                <div class="app-details">
+                    <div class="app-name">XO</div>
+                    <div class="app-category">online chatting game</div>
+                </div>
+                <button class="download-btn" data-link="xo.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+
+            <!-- APP 5: Nexus Chat -->
+            <div class="app-item">
+                <div class="app-icon"><img src="nexuschat.png" alt="Nexus Chat Icon"></div>
+                <div class="app-details">
+                    <div class="app-name">Nexus Chat</div>
+                    <div class="app-category">authentication system</div>
+                </div>
+                <button class="download-btn" data-link="nexuschat.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </div>
+
+            
+
+                <div class="app-item">
+                    <div class="app-icon"><img src="lifesync.png" alt="Lifesync Icon"></div>
+                    <div class="app-details">
+                        <div class="app-name">Lifesync</div>
+                        <div class="app-category">health & fitness</div>
+                    </div>
+                    <!-- <button class="download-btn" data-link="lifesync.apk">
+                    <span class="btn-arrow">&#8595;</span>
+                    <span class="btn-loader"></span>
+                    </button> -->
+                    
+                    <span class="btn-text">Pending</span>
+                  
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const downloadBtns = document.querySelectorAll('.download-btn');
+        const toastMsg = document.getElementById('toastMsg');
+
+        downloadBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // If it is already loading, don't do anything (prevents double clicks)
+                if (this.classList.contains('is-loading')) return;
+
+                const apkLink = this.getAttribute('data-link');
+
+                this.classList.add('is-loading');
+
+                
+                setTimeout(() => {
+                         
+                    this.classList.remove('is-loading');
+                       
+                    const a = document.createElement('a');
+                    a.href = apkLink;
+                    a.download = ''; 
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+ 
+                    toastMsg.classList.add('show');
+
+                    setTimeout(() => {
+                        toastMsg.classList.remove('show');
+                    }, 3000);
+                    
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
